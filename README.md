@@ -1,5 +1,5 @@
 # MiniDNS
-This is my first project on the way to learn Go, it is a DNS server
+This is my first Go project; on the way to learn Go, it is a DNS server
 
 ## Installation
 Build it and run it
