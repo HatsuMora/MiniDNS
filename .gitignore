@@ -1,3 +1,7 @@
+# Goland files
+.idea
+/workspace.xml
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
