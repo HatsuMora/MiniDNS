@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 )
 
@@ -33,6 +34,11 @@ type Zone struct {
 	SOA       SOA        `json:"soa"`
 	NsRecords []NSRecord `json:"ns"`
 	ARecords  []ARecord  `json:"a"`
+}
+
+type Request struct {
+	Data    []byte
+	Address net.Addr
 }
 
 func (zone *Zone) ARecordsAsByteArray() []byte {

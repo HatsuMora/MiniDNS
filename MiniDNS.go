@@ -7,8 +7,10 @@ import (
 	"hatsumora.com/MiniDNS/utils"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"strings"
-	"sync"
+	"syscall"
 )
 
 const maxBufferSize = 512
@@ -17,29 +19,57 @@ const ip string = "127.0.0.1"
 const OpCodeFlag byte = 0b01111000
 
 func main() {
-	packetConnection, err := net.ListenPacket("udp", utils.FormatAddress(ip, port))
-	var wg sync.WaitGroup
-	wg.Add(1)
-	fmt.Printf("Starting MiniDNS at %s\n", packetConnection.LocalAddr())
+	fmt.Printf("Starting MiniDNS at %s\n", utils.FormatAddress(ip, port))
+	close := make(chan bool)
+	setupCloseHandler(close)
+	handleTraffic(close)
+}
+
+func setupCloseHandler(closeChan chan bool) {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		fmt.Println("Print Ctrl+C to close")
+		<-c
+		closeChan <- false
+		fmt.Println("MiniDNS has stopped")
+		os.Exit(0)
+	}()
+}
+
+func handleTraffic(closeChan chan bool) error {
+	connection, err := net.ListenPacket("udp", utils.FormatAddress(ip, port))
 	if err != nil {
 		log.Fatal("Can't listen for packages")
 	}
-	go handleTraffic(packetConnection)
-	wg.Wait()
+	c := make(chan models.Request)
+	defer close(c)
+
+	for {
+		go receivePackage(connection, c)
+		select {
+		case close := <-closeChan:
+			if close {
+				return connection.Close()
+			}
+
+		case req := <-c:
+			res := buildResponse(req.Data)
+			connection.WriteTo(res, req.Address)
+		}
+	}
+	return connection.Close()
 }
 
-func handleTraffic(connection net.PacketConn) {
-	for {
-		buffer := make([]byte, maxBufferSize)
-		n, addr, err := connection.ReadFrom(buffer)
-		if err != nil {
-			panic(err)
-		}
-		res := buildResponse(buffer)
-		fmt.Printf("packet-received: bytes=%d from=%s\n", n, addr.String())
-		fmt.Print(buffer)
-		connection.WriteTo(res, addr)
+func receivePackage(connection net.PacketConn, c chan models.Request) {
+	buffer := make([]byte, maxBufferSize)
+	n, addr, err := connection.ReadFrom(buffer)
+	if err != nil {
+		// TODO: Handle error
 	}
+
+	fmt.Printf("packet-received: bytes=%d from=%s\n", n, addr.String())
+	c <- models.Request{Data: buffer, Address: addr}
 }
 
 func buildResponse(data []byte) []byte {
