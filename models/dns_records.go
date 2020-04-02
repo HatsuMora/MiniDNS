@@ -6,6 +6,25 @@ import (
 	"strings"
 )
 
+/* For future reference:
+
+They must start with a letter, end with a letter or digit, and have as interior
+characters only letters, digits, and hyphen.
+
+For all parts of the DNS that are part of the official protocol, all
+comparisons between character strings (e.g., labels, domain names, etc.)
+are done in a case-insensitive manner
+
+When data enters the domain system, its original case should be
+preserved whenever possible
+
+2.3.4. Size limits
+labels          63 octets or less
+names           255 octets or less
+TTL             positive values of a signed 32 bit number.
+UDP messages    512 octets or less
+*/
+
 type NSRecord struct {
 	Host string `json:"host"`
 }
